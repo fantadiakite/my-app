@@ -4,40 +4,61 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { Button } from 'react-native-elements';
+import { LinearGradient } from 'expo-linear-gradient';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useRouter } from 'expo-router';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
+// Interface pour les données utilisateur
+interface UserData {
+  name: string;
+  plantsCount: number;
+  lastAnalysis: string;
+  avatar?: string;
+}
+
 // Fonction pour obtenir l'icône météo appropriée
 const getWeatherIcon = (weatherCondition: string) => {
-  switch (weatherCondition.toLowerCase()) {
-    case 'clear':
-      return require('../../assets/sunny.avif');
-    case 'clouds':
-      return require('../../assets/cloudy.avif');
-    case 'rain':
-      return require('../../assets/rainy.avif');
-    default:
-      return require('../../assets/sunny.avif');
-  }
+  const icons: Record<string, string> = {
+    clear: 'weather-sunny',
+    clouds: 'weather-cloudy',
+    rain: 'weather-rainy',
+    thunderstorm: 'weather-lightning',
+    snow: 'weather-snowy',
+    mist: 'weather-fog',
+  };
+
+  return icons[weatherCondition.toLowerCase()] || 'weather-sunny';
 };
 
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const [loadingWeather, setLoadingWeather] = useState(true);
-  const [temperature, setTemperature] = useState('');
-  const [weatherIcon, setWeatherIcon] = useState(require('../../assets/sunny.avif'));
-  const [weatherDescription, setWeatherDescription] = useState('');
-  const [humidity, setHumidity] = useState('');
-  const [windSpeed, setWindSpeed] = useState('');
+  const [weatherData, setWeatherData] = useState({
+    temperature: '--',
+    icon: require('../../assets/sunny.avif'),
+    description: 'Chargement...',
+    humidity: '--',
+    windSpeed: '--',
+    city: 'Sfax'
+  });
+
+  const router = useRouter();
   
-  // Données utilisateur statiques
-  const userData = {
+  // Données utilisateur
+  const [userData] = useState<UserData>({
     name: 'Aminata Touré',
     plantsCount: 12,
-    lastAnalysis: new Date().toLocaleDateString(),
-  };
+    lastAnalysis: new Date().toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }),
+    avatar: 'https://randomuser.me/api/portraits/women/44.jpg'
+  });
 
   const fetchWeatherData = async () => {
     try {
@@ -59,19 +80,22 @@ export default function HomeScreen() {
         `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=fr`
       );
 
-      const weatherData = weatherResponse.data;
-      setTemperature(Math.round(weatherData.main.temp).toString());
-      setWeatherIcon(getWeatherIcon(weatherData.weather[0].main));
-      setWeatherDescription(weatherData.weather[0].description);
-      setHumidity(`${weatherData.main.humidity}%`);
-      setWindSpeed(`${weatherData.wind.speed} km/h`);
+      const data = weatherResponse.data;
+      setWeatherData({
+        temperature: Math.round(data.main.temp).toString(),
+        icon: getWeatherIcon(data.weather[0].main),
+        description: data.weather[0].description.charAt(0).toUpperCase() + data.weather[0].description.slice(1),
+        humidity: `${data.main.humidity}%`,
+        windSpeed: `${(data.wind.speed * 3.6).toFixed(1)} km/h`,
+        city: data.name
+      });
     } catch (error) {
       console.error("Erreur données météo:", error);
       // Valeurs par défaut en cas d'erreur
-      setTemperature("24");
-      setWeatherDescription("Données indisponibles");
-      setHumidity("--");
-      setWindSpeed("--");
+      setWeatherData(prev => ({
+        ...prev,
+        description: "Données indisponibles"
+      }));
     } finally {
       setLoadingWeather(false);
     }
@@ -82,88 +106,223 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <ScrollView style={globalStyles.container}>
-      <Text style={globalStyles.title}>Bienvenue, {userData.name} !</Text>
+    <ScrollView 
+      style={globalStyles.container}
+      contentContainerStyle={styles.scrollContainer}
+    >
+      {/* En-tête avec avatar utilisateur */}
+      {/* <View style={styles.header}>
+        {userData.avatar && (
+          <Image 
+            source={{ uri: userData.avatar }} 
+            style={styles.avatar} 
+          />
+        )}
+        <View>
+          <Text style={styles.welcomeText}>Bonjour,</Text>
+          <Text style={styles.userName}>{userData.name}</Text>
+        </View>
+      </View> */}
       
       {/* Section Météo */}
-      <View style={[globalStyles.card, styles.weatherCard]}>
-        <Text style={styles.sectionTitle}>Conditions Météorologiques</Text>
+      <LinearGradient
+        colors={['#E3F2FD', '#BBDEFB']}
+        style={[globalStyles.card, styles.weatherCard]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.weatherHeader}>
+          <Text style={styles.sectionTitle}>Météo à {weatherData.city}</Text>
+          <Icon name="map-marker" size={20} color={colors.primary} />
+        </View>
+        
         {loadingWeather ? (
-          <Text>Chargement des données météo...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
         ) : (
           <>
-            <View style={styles.weatherRow}>
+            <View style={styles.weatherMain}>
               <Image 
-                source={weatherIcon} 
+                source={weatherData.icon} 
                 style={styles.weatherIcon} 
+                resizeMode="contain"
               />
-              <Text style={styles.weatherTemp}>{temperature}°C</Text>
+              <Text style={styles.weatherTemp}>{weatherData.temperature}°C</Text>
             </View>
-            <Text style={styles.weatherText}>Condition: {weatherDescription}</Text>
-            <Text style={styles.weatherText}>Humidité: {humidity}</Text>
-            <Text style={styles.weatherText}>Vent: {windSpeed}</Text>
+            <Text style={styles.weatherDescription}>{weatherData.description}</Text>
+            
+            <View style={styles.weatherDetails}>
+              <View style={styles.weatherDetailItem}>
+                <Icon name="water" size={20} color={colors.primary} />
+                <Text style={styles.weatherDetailText}>{weatherData.humidity}</Text>
+              </View>
+              <View style={styles.weatherDetailItem}>
+                <Icon name="weather-windy" size={20} color={colors.primary} />
+                <Text style={styles.weatherDetailText}>{weatherData.windSpeed}</Text>
+              </View>
+            </View>
           </>
         )}
-      </View>
+      </LinearGradient>
       
       {/* Section Utilisateur */}
-      <View style={globalStyles.card}>
-        <Text style={styles.sectionTitle}>Vos Informations</Text>
-        <Text style={styles.infoText}>Nombre de plantes suivies: {userData.plantsCount}</Text>
-        <Text style={styles.infoText}>Dernière analyse: {userData.lastAnalysis}</Text>
+      <View style={[globalStyles.card, styles.userCard]}>
+        <Text style={styles.sectionTitle}>Votre Jardin</Text>
+        
+        <View style={styles.infoItem}>
+          <Icon name="leaf" size={24} color={colors.success} style={styles.infoIcon} />
+          <View>
+            <Text style={styles.infoLabel}>Plantes suivies</Text>
+            <Text style={styles.infoValue}>{userData.plantsCount}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.infoItem}>
+          <Icon name="calendar-clock" size={24} color={colors.warning} style={styles.infoIcon} />
+          <View>
+            <Text style={styles.infoLabel}>Dernière analyse</Text>
+            <Text style={styles.infoValue}>{userData.lastAnalysis}</Text>
+          </View>
+        </View>
       </View>
       
       {/* Boutons d'action */}
-      <Button
-        title="Analyser une feuille"
-        buttonStyle={globalStyles.button}
-        titleStyle={globalStyles.buttonText}
-        onPress={() => navigation.navigate('ImageSelection')}
-      />
-      
-      <Button
-        title="Discuter avec l'assistant"
-        buttonStyle={[globalStyles.button, { backgroundColor: colors.secondary }]}
-        titleStyle={globalStyles.buttonText}
-        onPress={() => navigation.navigate('Chat')}
-      />
+      <View style={styles.buttonsContainer}>
+        <Button
+          title="Analyser une feuille"
+          buttonStyle={[globalStyles.button, styles.actionButton]}
+          titleStyle={globalStyles.buttonText}
+          onPress={() => router.push('/ImageSelectionScreen')}
+          icon={<Icon name="camera" size={20} color="white" style={styles.buttonIcon} />}
+        />
+        
+        <Button
+          title="Discuter avec l'assistant"
+          buttonStyle={[globalStyles.button, styles.actionButton, { backgroundColor: colors.secondary }]}
+          titleStyle={globalStyles.buttonText}
+          onPress={() => router.push('/ChatScreen')}
+          icon={<Icon name="chat" size={20} color="white" style={styles.buttonIcon} />}
+        />
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  weatherCard: {
-    backgroundColor: '#E3F2FD',
+  scrollContainer: {
+    paddingBottom: 20,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: colors.text,
-  },
-  weatherRow: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 5,
+    marginBottom: 20,
   },
-  weatherIcon: {
-    width: 40,
-    height: 40,
-    marginRight: 10,
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 15,
   },
-  weatherTemp: {
+  welcomeText: {
+    fontSize: 16,
+    color: colors.primaryLight,
+  },
+  userName: {
     fontSize: 22,
     fontWeight: 'bold',
     color: colors.text,
   },
-  weatherText: {
-    fontSize: 16,
-    color: colors.lightText,
-    marginBottom: 3,
+  weatherCard: {
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  infoText: {
-    fontSize: 16,
+  weatherHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
     color: colors.text,
-    marginBottom: 8,
+  },
+  weatherMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  weatherIcon: {
+    width: 60,
+    height: 60,
+    marginRight: 15,
+  },
+  weatherTemp: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  weatherDescription: {
+    fontSize: 16,
+    color: colors.primaryLight,
+    marginBottom: 15,
+    fontStyle: 'italic',
+  },
+  weatherDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 10,
+  },
+  weatherDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 10,
+  },
+  weatherDetailText: {
+    fontSize: 14,
+    color: colors.text,
+    marginLeft: 5,
+  },
+  userCard: {
+    marginBottom: 20,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  infoIcon: {
+    marginRight: 15,
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: colors.primaryLight,
+    marginBottom: 2,
+  },
+  infoValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  buttonsContainer: {
+    marginTop: 10,
+  },
+  actionButton: {
+    marginBottom: 15,
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
+  buttonIcon: {
+    marginRight: 8,
   },
 });

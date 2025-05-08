@@ -4,6 +4,7 @@ export const globalStyles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+    paddingTop:50,
     backgroundColor: '#f5f5f5',
   },
   title: {
@@ -45,9 +46,34 @@ export const globalStyles = StyleSheet.create({
 });
 
 export const colors = {
-  primary: '#4CAF50',
-  secondary: '#8BC34A',
-  background: '#f5f5f5',
-  text: '#333',
-  lightText: '#777',
+  // Couleurs principales
+  primary: '#2E7D32', // Un vert plus foncé pour une meilleure accessibilité
+  primaryLight: '#4CAF50', // Ancien primary comme variante light
+  primaryDark: '#1B5E20', // Variante dark
+  
+  secondary: '#689F38', // Un vert secondaire plus harmonieux
+  secondaryLight: '#8BC34A', // Ancien secondary comme variante light
+  secondaryDark: '#33691E', // Variante dark
+  
+  // Arrière-plans
+  background: '#F5F7FA', // Un gris plus doux et moderne
+  surface: '#FFFFFF', // Pour les composants en surface
+  error: '#D32F2F', // Pour les états d'erreur
+  
+  // Texte
+  text: '#212121', // Noir plus doux que #000
+  textSecondary: '#424242', // Pour texte moins important
+  textLight: '#757575', // Pour texte discret
+  textOnPrimary: '#FFFFFF', // Texte sur fond primary
+  textOnSecondary: '#FFFFFF', // Texte sur fond secondary
+  
+  // États et interactions
+  disabled: '#BDBDBD',
+  border: '#E0E0E0',
+  ripple: 'rgba(0, 0, 0, 0.1)',
+  
+  // Couleurs supplémentaires utiles
+  success: '#388E3C', // Pour feedback positif
+  warning: '#FFA000', // Pour avertissements
+  info: '#1976D2', // Pour informations
 };
